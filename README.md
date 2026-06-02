@@ -6,3 +6,40 @@ This is a behavior-based ransomware detection and recovery system utilizing a cl
 - `/agent`: The endpoint agent that monitors files locally, calculates entropy, and triggers backups.
 - `/server`: The central Flask server that receives telemetry, logs events, and provides the dashboard.
 - `/docs`: Documentation and architecture plans.
+
+## Team Member Setup & Testing Guide
+
+If you have just cloned this repository, follow these steps to run and test the ransomware detection system on your local machine.
+
+### 1. Prerequisites
+You need **Python 3.8+** installed. Make sure to install the dependencies for both the agent and the server:
+```bash
+# Install Server dependencies
+pip install -r server/requirements.txt
+
+# Install Agent dependencies
+pip install -r agent/requirements.txt
+```
+
+### 2. Start the Server (Terminal 1)
+The server acts as the centralized Security Operations Center (SOC) dashboard. It must be running to receive alerts.
+```bash
+cd server
+python app.py
+```
+*You can now view the dashboard at `http://127.0.0.1:5000`*
+
+### 3. Start the Agent (Terminal 2)
+The agent silently monitors your file system.
+```bash
+cd agent
+python main.py
+```
+*(It will create a `test_env` folder on your Desktop by default and monitor it for ransomware-like behavior).*
+
+### 4. Simulate an Attack (Terminal 3)
+To see the system in action, run the test script. It will generate dummy files and rapidly modify/encrypt them to trick the agent.
+```bash
+python test_agent.py
+```
+*Once the script finishes, refresh your browser dashboard (`http://127.0.0.1:5000`) to see the newly generated Threat Alerts!*
