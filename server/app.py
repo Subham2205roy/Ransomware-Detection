@@ -1,10 +1,11 @@
 import os
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
 from functools import wraps
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from extensions import db
 import models  # This ensures models are registered with SQLAlchemy
+from reporting import generate_incident_report
 
 # Load environment variables from .env
 load_dotenv()
@@ -63,6 +64,17 @@ def create_app():
         } for a in alerts]
         
         return jsonify({'agents': agents_data, 'alerts': alerts_data})
+
+    @app.route('/report/download/<int:alert_id>')
+    def download_report(alert_id):
+        alert = models.Alert.query.get_or_404(alert_id)
+        pdf_buffer = generate_incident_report(alert)
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=f"REWARS_Incident_Report_{alert_id}.pdf",
+            mimetype='application/pdf'
+        )
         
     @app.route('/api/register', methods=['POST'])
     @require_api_key

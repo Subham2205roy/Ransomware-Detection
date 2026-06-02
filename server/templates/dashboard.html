@@ -70,6 +70,7 @@
                                 <th>Agent</th>
                                 <th>Type</th>
                                 <th>Details</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="alerts-table-body">
@@ -83,10 +84,15 @@
                                     </span>
                                 </td>
                                 <td><small class="text-muted">{{ alert.description }}</small></td>
+                                <td>
+                                    <a href="/report/download/{{ alert.id }}" class="btn btn-sm btn-outline-info" title="Download Incident Report">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    </a>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-5">
+                                <td colspan="5" class="text-center text-muted py-5">
                                     <i class="bi bi-shield-check display-4 d-block mb-3 text-success"></i>
                                     System is secure. No recent threats detected.
                                 </td>
@@ -130,7 +136,7 @@ function fetchDashboardData() {
             if (data.alerts.length === 0) {
                 alertsBody.innerHTML = `
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-5">
+                        <td colspan="5" class="text-center text-muted py-5">
                             <i class="bi bi-shield-check display-4 d-block mb-3 text-success"></i>
                             System is secure. No recent threats detected.
                         </td>
@@ -146,6 +152,11 @@ function fetchDashboardData() {
                             </span>
                         </td>
                         <td><small class="text-muted">${alert.description}</small></td>
+                        <td>
+                            <a href="/report/download/${alert.id}" class="btn btn-sm btn-outline-info" title="Download Incident Report">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
+                        </td>
                     </tr>
                 `).join('');
             }
