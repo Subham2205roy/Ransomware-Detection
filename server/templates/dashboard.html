@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - REWARS{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2><i class="bi bi-speedometer2"></i> Security Operations Center</h2>
+        <p class="text-muted">Real-time telemetry and threat detection overview.</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Active Agents Panel -->
+    <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Monitored Endpoints</h5>
+                <span class="badge bg-primary rounded-pill">{{ agents|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-dark mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>IP Address</th>
+                                <th>Last Seen</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in agents %}
+                            <tr>
+                                <td>{{ agent.hostname }}</td>
+                                <td>{{ agent.ip_address }}</td>
+                                <td>{{ agent.last_seen.strftime('%Y-%m-%d %H:%M:%S') if agent.last_seen else 'N/A' }}</td>
+                                <td>
+                                    {% if agent.status == 'active' %}
+                                    <span class="status-active"><i class="bi bi-circle-fill small"></i> Active</span>
+                                    {% else %}
+                                    <span class="status-offline"><i class="bi bi-circle-fill small"></i> Offline</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No agents registered yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Alerts Panel -->
+    <div class="col-lg-7 mb-4">
+        <div class="card h-100 border-danger">
+            <div class="card-header bg-dark d-flex justify-content-between align-items-center border-danger">
+                <h5 class="mb-0 text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Threat Alerts</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-dark mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Agent</th>
+                                <th>Type</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in alerts %}
+                            <tr>
+                                <td>{{ alert.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ alert.agent.hostname if alert.agent else alert.agent_id }}</td>
+                                <td>
+                                    <span class="severity-{{ alert.severity }}">
+                                        {{ alert.alert_type }}
+                                    </span>
+                                </td>
+                                <td><small class="text-muted">{{ alert.description }}</small></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-5">
+                                    <i class="bi bi-shield-check display-4 d-block mb-3 text-success"></i>
+                                    System is secure. No recent threats detected.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
