@@ -40,6 +40,30 @@ def create_app():
         alerts = models.Alert.query.order_by(models.Alert.timestamp.desc()).limit(50).all()
         return render_template('dashboard.html', agents=agents, alerts=alerts)
         
+    @app.route('/api/dashboard_data')
+    def dashboard_data():
+        agents = models.Agent.query.all()
+        alerts = models.Alert.query.order_by(models.Alert.timestamp.desc()).limit(50).all()
+        
+        agents_data = [{
+            'id': a.id,
+            'hostname': a.hostname,
+            'ip_address': a.ip_address,
+            'last_seen': a.last_seen.strftime('%Y-%m-%d %H:%M:%S') if a.last_seen else 'N/A',
+            'status': a.status
+        } for a in agents]
+        
+        alerts_data = [{
+            'id': a.id,
+            'timestamp': a.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'agent': a.agent.hostname if a.agent else a.agent_id,
+            'alert_type': a.alert_type,
+            'severity': a.severity,
+            'description': a.description
+        } for a in alerts]
+        
+        return jsonify({'agents': agents_data, 'alerts': alerts_data})
+        
     @app.route('/api/register', methods=['POST'])
     @require_api_key
     def register_agent():
