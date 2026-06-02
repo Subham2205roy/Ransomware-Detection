@@ -21,7 +21,12 @@ pip install -r server/requirements.txt
 pip install -r agent/requirements.txt
 ```
 
-### 2. Start the Server (Terminal 1)
+### 2. Environment Variables Configuration
+Because `.env` files contain sensitive keys, they are not stored in GitHub. You must create them using the provided example files:
+1. In the `server` folder, copy `.env.example` and rename it to `.env`.
+2. In the `agent` folder, copy `.env.example` and rename it to `.env`.
+
+### 3. Start the Server (Terminal 1)
 The server acts as the centralized Security Operations Center (SOC) dashboard. It must be running to receive alerts.
 ```bash
 cd server
