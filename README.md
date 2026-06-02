@@ -47,4 +47,11 @@ To see the system in action, run the test script. It will generate dummy files a
 ```bash
 python test_agent.py
 ```
-*Once the script finishes, refresh your browser dashboard (`http://127.0.0.1:5000`) to see the newly generated Threat Alerts!*
+*Once the script finishes, check your browser dashboard (`http://127.0.0.1:5000`)! You will see the new Threat Alerts populate automatically without refreshing the page.*
+
+## Cloud Deployment (Heroku/Render)
+
+The server component is built to be easily deployed to a cloud platform:
+1. Ensure your cloud provider sets the `DATABASE_URL` to a valid PostgreSQL connection string.
+2. Ensure you define `SECRET_KEY` and `API_KEY` in the cloud environment settings.
+3. The included `Procfile` uses `gunicorn` to run the Flask application in production mode.
