@@ -11,43 +11,47 @@ This is a behavior-based ransomware detection and recovery system utilizing a cl
 
 If you have just cloned this repository, follow these steps to run and test the ransomware detection system on your local machine.
 
-### 1. Prerequisites
-You need **Python 3.8+** installed. Make sure to install the dependencies for both the agent and the server:
+### Step 1: Clone the Repository
+Open a terminal and clone the repository. We will explicitly tell Git to name the folder `Ransomware` so it matches your local setup:
 ```bash
-# Install Server dependencies
-pip install -r server/requirements.txt
-
-# Install Agent dependencies
-pip install -r agent/requirements.txt
+git clone https://github.com/Subham2205roy/Ransomware-Detection.git Ransomware
+cd Ransomware
 ```
 
-### 2. Environment Variables Configuration
-Because `.env` files contain sensitive keys, they are not stored in GitHub. You must create them using the provided example files:
-1. In the `server` folder, copy `.env.example` and rename it to `.env`.
-2. In the `agent` folder, copy `.env.example` and rename it to `.env`.
-
-### 3. Start the Server (Terminal 1)
-The server acts as the centralized Security Operations Center (SOC) dashboard. It must be running to receive alerts.
+### Step 2: Set Up the Server (Terminal 1)
+The central server handles the database and the SOC dashboard. It must be started first.
 ```bash
 cd server
+pip install -r requirements.txt
+
+# Copy the example environment file
+copy .env.example .env
+
+# Run the server
 python app.py
 ```
-*You can now view the dashboard at `http://127.0.0.1:5000`*
+*You can now view the live SOC dashboard at `http://127.0.0.1:5000/dashboard`*
 
-### 3. Start the Agent (Terminal 2)
-The agent silently monitors your file system.
+### Step 3: Start the Security Agent (Terminal 2)
+Open a **new** terminal window, navigate back to the root `Ransomware` folder, and set up the agent.
 ```bash
 cd agent
+pip install -r requirements.txt
+
+# Copy the example environment file
+copy .env.example .env
+
+# Run the agent
 python main.py
 ```
-*(It will create a `test_env` folder on your Desktop by default and monitor it for ransomware-like behavior).*
+*(The agent will silently run in the background, deploy honeypot canaries, and register with the SOC Dashboard).*
 
-### 4. Simulate an Attack (Terminal 3)
-To see the system in action, run the test script. It will generate dummy files and rapidly modify/encrypt them to trick the agent.
+### Step 4: Simulate an Attack (Terminal 3)
+To see the system in action, open a **third** terminal window in the root `Ransomware` folder and run the attack simulator:
 ```bash
 python test_agent.py
 ```
-*Once the script finishes, check your browser dashboard (`http://127.0.0.1:5000`)! You will see the new Threat Alerts populate automatically without refreshing the page.*
+*Once the script runs, check your browser dashboard! The agent will detect the anomaly, instantly lock down the folder to prevent encryption, and a forensic PDF report will be generated.*
 
 ## Cloud Deployment (Heroku/Render)
 
