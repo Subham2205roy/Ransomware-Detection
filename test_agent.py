@@ -21,18 +21,24 @@ def run_test():
     time.sleep(2)
     
     print("1. Simulating rapid file modifications (Behavior Alert test)...")
-    for i in range(6):
-        with open(os.path.join(watch_dir, f"test_file_{i}.txt"), "w") as f:
-            f.write(f"This is a normal file {i}")
-        time.sleep(0.1) # Rapidly create files
+    try:
+        for i in range(6):
+            with open(os.path.join(watch_dir, f"test_file_{i}.txt"), "w") as f:
+                f.write(f"This is a normal file {i}")
+            time.sleep(0.1) # Rapidly create files
+    except PermissionError:
+        print("SUCCESS: The agent locked the folder mid-attack! (Behavior Alert caught it instantly)")
         
     time.sleep(1)
         
-    print("2. Simulating high entropy file encryption (Entropy Alert test)...")
-    # Generate high entropy data (random bytes)
-    random_bytes = os.urandom(1024 * 50) # 50KB of pure random data
-    with open(os.path.join(watch_dir, "encrypted_sim.dat"), "wb") as f:
-        f.write(random_bytes)
+    try:
+        # Generate high entropy data (random bytes)
+        random_bytes = os.urandom(1024 * 50) # 50KB of pure random data
+        with open(os.path.join(watch_dir, "encrypted_sim.dat"), "wb") as f:
+            f.write(random_bytes)
+        print("WARNING: The agent did NOT stop the encryption!")
+    except PermissionError:
+        print("SUCCESS: The agent blocked the ransomware from writing encrypted files! (Folder Lockdown Working)")
         
     # Give agent time to process and log
     time.sleep(5)

@@ -88,3 +88,19 @@ class APIClient:
         except requests.exceptions.RequestException as e:
             logging.error(f"Connection error transmitting alert to server: {e}")
             return False
+
+    def poll_commands(self, folder_locked=False):
+        """Polls the server for pending commands."""
+        try:
+            url = f"{self.server_url}/api/commands"
+            payload = {
+                "agent_id": self.agent_id,
+                "folder_locked": folder_locked
+            }
+            response = requests.post(url, json=payload, headers=self.headers, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("commands", []), data.get("watch_directory")
+            return [], None
+        except requests.exceptions.RequestException:
+            return [], None

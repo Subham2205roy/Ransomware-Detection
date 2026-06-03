@@ -8,6 +8,9 @@ class Agent(db.Model):
     ip_address = db.Column(db.String(45), nullable=True)
     status = db.Column(db.String(50), default="active")
     last_seen = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    folder_locked = db.Column(db.Boolean, default=False)
+    pending_unlock = db.Column(db.Boolean, default=False)
+    watch_directory = db.Column(db.String(500), nullable=True)
     
     # Relationships
     events = db.relationship('EventLog', backref='agent', lazy=True)

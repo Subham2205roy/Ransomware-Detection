@@ -35,6 +35,9 @@ def main():
     
     # Deploy canary honeypot files
     canary_manager.deploy_canaries()
+    # Maintain local state
+    folder_locked = False
+    monitor_running = False
     
     # Start background heartbeat thread
     def heartbeat_loop():
@@ -44,8 +47,72 @@ def main():
             
     threading.Thread(target=heartbeat_loop, daemon=True).start()
     
+    # Start background command polling thread
+    def command_loop():
+        nonlocal folder_locked, watch_directory, monitor, behavior_analyzer, canary_manager, mitigator, monitor_running
+        while True:
+            time.sleep(5)
+            commands, remote_dir = api_client.poll_commands(folder_locked=folder_locked)
+            
+            # Handle remote directory switch
+            if remote_dir and remote_dir != watch_directory:
+                logging.info(f"Remote configuration update: Switching watch directory to {remote_dir}")
+                
+                # Stop current monitor
+                if monitor_running:
+                    try:
+                        monitor.stop()
+                    except Exception as e:
+                        logging.error(f"Error stopping monitor: {e}")
+                
+                # Ensure new target directory exists
+                if not os.path.exists(remote_dir):
+                    try:
+                        os.makedirs(remote_dir, exist_ok=True)
+                    except Exception as e:
+                        logging.error(f"Failed to create new watch directory {remote_dir}: {e}")
+                        continue
+                        
+                # Re-initialize components
+                watch_directory = remote_dir
+                monitor = DirectoryMonitor(watch_directory)
+                canary_manager = CanaryManager(watch_directory)
+                mitigator = ActiveMitigation(watch_directory)
+                
+                canary_manager.deploy_canaries()
+                folder_locked = False
+                
+                try:
+                    monitor.start()
+                    monitor_running = True
+                    logging.info(f"Successfully switched monitoring to {watch_directory}")
+                except PermissionError:
+                    logging.error(f"Access denied monitoring {watch_directory}. It might be locked down.")
+                    monitor_running = False
+                
+            for cmd in commands:
+                if cmd == "unlock":
+                    logging.info("Received remote command: UNLOCK")
+                    mitigator.unlock_directory()
+                    folder_locked = False
+                    if not monitor_running:
+                        try:
+                            monitor.start()
+                            monitor_running = True
+                            logging.info("Monitor successfully started after unlock.")
+                        except Exception as e:
+                            logging.error(f"Could not start monitor after unlock: {e}")
+                    
+    threading.Thread(target=command_loop, daemon=True).start()
+    
     try:
-        monitor.start()
+        try:
+            monitor.start()
+            monitor_running = True
+        except PermissionError as e:
+            logging.error(f"Permission denied starting monitor on {watch_directory}. Is it locked? {e}")
+            logging.info("Agent is still running and waiting for remote UNLOCK command.")
+            folder_locked = True
         
         # Main loop to keep the agent alive
         # Future phases will pull from monitor.event_queue here for analysis
@@ -89,15 +156,15 @@ def main():
                     logging.warning(f"THREAT DETECTED on {event['path']} - Reasons: {', '.join(threat_reasons)}")
                     
                     # --- ACTIVE MITIGATION ---
-                    # 1. Kill the process touching the file
-                    killed_pids = mitigator.kill_suspect_process(event['path'])
-                    if killed_pids:
-                        threat_reasons.append(f"Killed PIDs: {killed_pids}")
-                        
-                    # 2. Lockdown the directory
+                    # 1. Lockdown the directory IMMEDIATELY
                     locked = mitigator.lockdown_directory()
                     if locked:
-                        threat_reasons.append("Folder locked down (Read-Only)")
+                        folder_locked = True
+                        threat_reasons.append("Folder locked down (Read-Only via icacls)")
+
+                    # 2. Kill the process touching the file (can be slow/hang on Windows, so run in background)
+                    threading.Thread(target=mitigator.kill_suspect_process, args=(event['path'],), daemon=True).start()
+                    threat_reasons.append("Initiated suspect process termination")
 
                     # 3. Trigger Recovery
                     if event['type'] != 'DELETED':

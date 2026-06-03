@@ -46,24 +46,40 @@ def create_app():
         agents = models.Agent.query.all()
         alerts = models.Alert.query.order_by(models.Alert.timestamp.desc()).limit(50).all()
         
+        # Calculate KPIs
+        total_agents = len(agents)
+        active_agents = sum(1 for a in agents if a.status == 'active')
+        total_alerts = models.Alert.query.count()
+        locked_folders = sum(1 for a in agents if a.folder_locked)
+        
+        kpis = {
+            'total_agents': total_agents,
+            'active_agents': active_agents,
+            'total_alerts': total_alerts,
+            'locked_folders': locked_folders
+        }
+        
         agents_data = [{
             'id': a.id,
             'hostname': a.hostname,
             'ip_address': a.ip_address,
             'last_seen': a.last_seen.strftime('%Y-%m-%d %H:%M:%S') if a.last_seen else 'N/A',
-            'status': a.status
+            'status': a.status,
+            'folder_locked': a.folder_locked,
+            'watch_directory': a.watch_directory
         } for a in agents]
         
         alerts_data = [{
             'id': a.id,
             'timestamp': a.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             'agent': a.agent.hostname if a.agent else a.agent_id,
+            'agent_id': a.agent_id,
             'alert_type': a.alert_type,
             'severity': a.severity,
             'description': a.description
         } for a in alerts]
         
-        return jsonify({'agents': agents_data, 'alerts': alerts_data})
+        return jsonify({'kpis': kpis, 'agents': agents_data, 'alerts': alerts_data})
 
     @app.route('/report/download/<int:alert_id>')
     def download_report(alert_id):
@@ -114,6 +130,52 @@ def create_app():
         db.session.commit()
         
         return jsonify({"message": "Heartbeat received"}), 200
+        
+    @app.route('/api/commands', methods=['POST'])
+    @require_api_key
+    def get_commands():
+        data = request.json
+        agent_id = data.get('agent_id')
+        agent = models.Agent.query.get(agent_id)
+        
+        if not agent:
+            return jsonify({"error": "Agent not found"}), 404
+            
+        commands = []
+        if agent.pending_unlock:
+            commands.append("unlock")
+            agent.pending_unlock = False
+            
+        # Agent also reports its current lock status in the request
+        current_lock_status = data.get('folder_locked')
+        if current_lock_status is not None:
+            agent.folder_locked = current_lock_status
+            
+        db.session.commit()
+        return jsonify({
+            "commands": commands,
+            "watch_directory": agent.watch_directory
+        }), 200
+        
+    @app.route('/api/agents/<agent_id>/config', methods=['POST'])
+    def update_config(agent_id):
+        # In a real app, this should be protected by user authentication.
+        agent = models.Agent.query.get_or_404(agent_id)
+        data = request.json
+        new_dir = data.get('watch_directory')
+        if new_dir is not None:
+            agent.watch_directory = new_dir
+            db.session.commit()
+            return jsonify({"message": "Configuration updated successfully"}), 200
+        return jsonify({"error": "Missing watch_directory"}), 400
+        
+    @app.route('/api/agents/<agent_id>/unlock', methods=['POST'])
+    def request_unlock(agent_id):
+        # In a real app, this should be protected by user authentication.
+        agent = models.Agent.query.get_or_404(agent_id)
+        agent.pending_unlock = True
+        db.session.commit()
+        return jsonify({"message": "Unlock command queued for agent"}), 200
 
     @app.route('/api/alert', methods=['POST'])
     @require_api_key
@@ -147,6 +209,12 @@ def create_app():
             description=description
         )
         db.session.add(alert)
+        
+        if "Folder locked down" in description:
+            agent = models.Agent.query.get(agent_id)
+            if agent:
+                agent.folder_locked = True
+                
         db.session.commit()
         
         return jsonify({"message": "Alert recorded successfully"}), 201

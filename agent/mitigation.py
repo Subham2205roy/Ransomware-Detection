@@ -2,6 +2,7 @@ import os
 import psutil
 import logging
 import stat
+import subprocess
 
 class ActiveMitigation:
     def __init__(self, watch_directory):
@@ -45,20 +46,16 @@ class ActiveMitigation:
 
     def lockdown_directory(self):
         """
-        Makes the watched directory and all files inside read-only to stop further encryption.
+        Makes the watched directory and all files inside read-only using Windows icacls.
+        This prevents ransomware from writing, modifying, or deleting files.
         """
         try:
-            # Change directory permissions
-            os.chmod(self.watch_directory, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+            # (OI)(CI) = Object Inherit, Container Inherit (applies to all files and subfolders)
+            # W,D = Write, Delete
+            cmd = ['icacls', self.watch_directory, '/deny', 'Everyone:(OI)(CI)(W,D)']
+            subprocess.run(cmd, capture_output=True, check=True, text=True)
             
-            # Change all files and subdirectories
-            for root, dirs, files in os.walk(self.watch_directory):
-                for d in dirs:
-                    os.chmod(os.path.join(root, d), stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
-                for f in files:
-                    os.chmod(os.path.join(root, f), stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
-                    
-            logging.info(f"Directory {self.watch_directory} locked down (Read-Only) successfully.")
+            logging.info(f"Directory {self.watch_directory} locked down (Write/Delete Denied) successfully via icacls.")
             return True
         except Exception as e:
             logging.error(f"Failed to lockdown directory: {e}")
@@ -67,12 +64,9 @@ class ActiveMitigation:
     def unlock_directory(self):
         """Restores write permissions to the directory."""
         try:
-            os.chmod(self.watch_directory, stat.S_IWRITE | stat.S_IREAD | stat.S_IEXEC)
-            for root, dirs, files in os.walk(self.watch_directory):
-                for d in dirs:
-                    os.chmod(os.path.join(root, d), stat.S_IWRITE | stat.S_IREAD | stat.S_IEXEC)
-                for f in files:
-                    os.chmod(os.path.join(root, f), stat.S_IWRITE | stat.S_IREAD | stat.S_IEXEC)
+            # Remove the explicit deny rule for Everyone
+            cmd = ['icacls', self.watch_directory, '/remove:d', 'Everyone', '/T']
+            subprocess.run(cmd, capture_output=True, check=True, text=True)
             logging.info(f"Directory {self.watch_directory} unlocked (Write restored).")
         except Exception as e:
             logging.error(f"Failed to unlock directory: {e}")
